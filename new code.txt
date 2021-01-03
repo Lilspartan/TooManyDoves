@@ -1,0 +1,52 @@
+Flip images:
+variable_Name = pygame.transform.flip(variable_Name ( same as before) ,Horizontal (bool), Vertical(bool))
+
+Load Text:
+variable_Name = font.render('Text (string)' , False, (255,255,255))
+
+120 px (first gem start)
+50 px (gem height)
+12 px (gem width)
+52 px (bar height)
+
+Gem Height: 50px
+Gem Width: 12px
+StackedGemWidth: 240px
+StackedGemHeight: 50px
+
+jimbar: 343
+new_jimbar: 500
+157
+44 px
+
+67 px, bottom of screen to top of portal
+
+normal gem 70%
+kills one dove
+
+green flame 5%
+column dies
+
+magic missile
+kill 3 random doves
+
+feather fall
+doves dont move down next time
+
+portal
+block 2 poops
+
+hold creature
+stops doves
+
+fireball:
+kills entire row
+
+
+green% = 5
+yellow% = 2
+normal% = 75
+teal% = 2
+purple% = 1
+red% = 10
+blue% = 5

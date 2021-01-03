@@ -2,27 +2,45 @@
 import pygame, random
 pygame.init()
 pygame.font.init()
+pygame.joystick.init()
 screenwidth = 1000
 screenheight = 800
+try:
+    joystick = pygame.joystick.Joystick(0)
+    joystick.init()
+except:
+    pass
+
 icon = pygame.image.load('images/dove_right_up.png')
-window = pygame.display.set_mode([screenwidth, screenheight])
+window = pygame.display.set_mode([screenwidth,screenheight])
 pygame.display.set_caption('Too Many Doves!')
 pygame.display.set_icon(icon)
 c = pygame.time.Clock()
 x=450
-y=650
+dove_hit = False
+y=625
+is_pooped = False
+light = True
+broken_light = False
 player = pygame.Rect(x,y,50,150)
 player_color = (20, 214, 10)
 shot = False
 run = True
 speed = 25
 white = (255,255,255)
-wait_time = 40
+wait_time = 40  
 left = 1
 right = 6
+shots_amt = 15
 background = pygame.image.load('images/bgtest1.png')
+gem_y = 57
+gem_up = False
+spotlight = pygame.image.load('images/spotlight.png')
 curtains = pygame.image.load('images/bgtest2.png')
-right_jim = pygame.image.load('images/jim_left_1.png')
+left_portal1 = pygame.image.load('images/left_portalback.png')
+left_portal2 = pygame.image.load('images/left_portalfront.png')
+right_portal1 = pygame.image.load('images/right_portalback.png')
+right_portal2 = pygame.image.load('images/right_portaltop.png')
 going_right = False
 moves = 0
 dove_h = 44
@@ -30,10 +48,19 @@ dove_w = 39
 spacing = 75
 score = 0
 jim_move = True
+hit = False
+green_flame = False
+magic_missile = False
+feather_fall = False
+portal = False
+hold_creature = False
+fireball = False
+gone_right = False
 font = pygame.font.SysFont('advanced-_pixel-7.ttf', 75)
 digit1 = 0
 digit2 = 0
 digit3 = 0
+use_ability = False
 scoretext = font.render('SCORE: ' + str(digit1) + str(digit2) + str(digit3) , False, (255,255,255))
 #row1 = [first1,first2,first3,first4,first5,first6]
 pygame.mixer.music.load('Song_Doves_Go_Fast.wav')
@@ -42,6 +69,8 @@ score_sound = pygame.mixer.Sound('snd_score.wav')
 shoot_sound = pygame.mixer.Sound('snd_Got_Hit.wav')
 get_hit = pygame.mixer.Sound('snd_Hit_with_poop.wav')
 poop_sound = pygame.mixer.Sound('sndPoop1.wav')
+#gem percents
+
 #---ROW ONE---#
 first1_alive = True
 first2_alive = True
@@ -51,12 +80,12 @@ first5_alive = True
 first6_alive = True
 
 #---Load row1---#
-first1 = pygame.Rect(25,200,dove_w,dove_h)
-first2 = pygame.Rect((first1.x + spacing),200,dove_w,dove_h)
-first3 = pygame.Rect((first2.x + spacing),200,dove_w,dove_h)
-first4 = pygame.Rect((first3.x + spacing),200,dove_w,dove_h)
-first5 = pygame.Rect((first4.x + spacing),200,dove_w,dove_h)
-first6 = pygame.Rect((first5.x + spacing),200,dove_w,dove_h)
+first1 = pygame.Rect(25,300,dove_w,dove_h)
+first2 = pygame.Rect((first1.x + spacing),300,dove_w,dove_h)
+first3 = pygame.Rect((first2.x + spacing),300,dove_w,dove_h)
+first4 = pygame.Rect((first3.x + spacing),300,dove_w,dove_h)
+first5 = pygame.Rect((first4.x + spacing),300,dove_w,dove_h)
+first6 = pygame.Rect((first5.x + spacing),300,dove_w,dove_h)
 
 #---ROW TWO---#
 second1_alive = True
@@ -74,7 +103,7 @@ third4_alive = True
 third5_alive = True
 third6_alive = True
 
-#---ROW THREE---#
+#---ROW FOUR---#
 fourth1_alive = True
 fourth2_alive = True
 fourth3_alive = True
@@ -94,18 +123,52 @@ dove_right_up = pygame.image.load('images/dove_right_up.png')
 dove_right_down = pygame.image.load('images/dove_right_down.png')
 dove_left_up = pygame.image.load('images/dove_left_up.png')
 dove_left_down = pygame.image.load('images/dove_left_down.png')
-
-jim_left = pygame.image.load('images/jim_left_1.png')
+magic_bar = pygame.image.load('images/jimbar0.png')
+gem_image = pygame.image.load('images/gempurple.png')
+locked_gem = pygame.image.load('images/gem2.png')
+gem_width = 12
+gem_height = 50
+bar_height = 52
+gem_start = 760
+special_bar = 0
 shot_w = 8
 shot_h = 35
 shot_rect = pygame.Rect((player.x + 42),screenheight - 100,shot_w,shot_h)
 shot_timer = 0
+
 #def fall(dove):
-
-
+paused = False
+locked = 20
+poop_lvl = 0
 pooping = False
+MAX_SHOTS = 20
+light_timer = 25
+total_score = 0
 while run:
+    normal = 75
+    green = 79
+    yellow = 83
+    teal = 87
+    purple = 91
+    red = 95
+    blue = 100
+    if special_bar == 10:
+        print("ACTIVE")
+        which_gem = random.randint(0,100)
+        if which_gem == normal:
+            use_ability = False
+        elif which_gem >= green:
+            use_ability = True
+            green_flame = True
+    elif special_bar < 10:
+        use_ability = False
+        green_flame = False
+
+
     window.blit(background,(0,0))
+
+
+    # Set x/y of all doves (based on dove1)
     second1 = pygame.Rect(first1.x,first1.y - dove_h,dove_w,dove_h)
     second2 = pygame.Rect(first2.x,first2.y - dove_h,dove_w,dove_h)
     second3 = pygame.Rect(first3.x,first3.y - dove_h,dove_w,dove_h)
@@ -124,6 +187,9 @@ while run:
     fourth4 = pygame.Rect(first4.x,first4.y - (dove_h * 3),dove_w,dove_h)
     fourth5 = pygame.Rect(first5.x,first5.y - (dove_h * 3),dove_w,dove_h)
     fourth6 = pygame.Rect(first6.x,first6.y - (dove_h * 3),dove_w,dove_h)
+
+    # Chooses a column to poop from
+        #finds the bottom dove of chosen column
     flap_up = (flaps%2) == 0
     if flap_up and not pooping:
         poop_column = random.randint(1,6)
@@ -136,6 +202,8 @@ while run:
                 poop_dove = third1
             elif fourth1_alive:
                 poop_dove = fourth1
+            else:
+                poop_dove = None
 
         if poop_column == 2:
             if first2_alive:
@@ -146,6 +214,8 @@ while run:
                 poop_dove = third2
             elif fourth2_alive:
                 poop_dove = fourth2
+            else:
+                poop_dove = None
 
         if poop_column == 3:
             if first3_alive:
@@ -156,6 +226,8 @@ while run:
                 poop_dove = third3
             elif fourth3_alive:
                 poop_dove = fourth3
+            else:
+                poop_dove = None
         if poop_column == 4:
             if first4_alive:
                 poop_dove = first4
@@ -165,6 +237,8 @@ while run:
                 poop_dove = third4
             elif fourth4_alive:
                 poop_dove = fourth4
+            else:
+                poop_dove = None
         if poop_column == 5:
             if first5_alive:
                 poop_dove = first5
@@ -174,6 +248,8 @@ while run:
                 poop_dove = third5
             elif fourth5_alive:
                 poop_dove = fourth5
+            else:
+                poop_dove = None
         if poop_column == 6:
             if first6_alive:
                 poop_dove = first6
@@ -183,11 +259,20 @@ while run:
                 poop_dove = third6
             elif fourth6_alive:
                 poop_dove = fourth6
+            else:
+                poop_dove = None
         pooping = True
-        poop_y = poop_dove.y + dove_h
-        poop_rect = pygame.Rect(poop_dove.x + (dove_w / 2),poop_y, poop_w, poop_h)
-        pygame.mixer.Sound.play(poop_sound)
-    elif not flap_up:
+        poop = pygame.image.load('images/poop1.png')
+        is_pooped = False
+        hit = False
+        try:
+            poop_y = poop_dove.y + dove_h
+            poop_rect = pygame.Rect(poop_dove.x + (dove_w / 2),poop_y, poop_w, poop_h)
+            pygame.mixer.Sound.play(poop_sound)
+        except:
+            pass
+
+    if not flap_up:
         pooping = False
     keys = pygame.key.get_pressed()
     for event in pygame.event.get():
@@ -199,21 +284,36 @@ while run:
         shot = True
         shot_rect = pygame.Rect((player.x + 42),screenheight - 100,shot_w,shot_h)
         pygame.mixer.Sound.play(shoot_sound)
-
-
-
+    if event.type == pygame.JOYBUTTONDOWN:
+            if joystick.get_button(1) and not shot:
+                shot = True
+                shot_rect = pygame.Rect((player.x + 42),screenheight - 100,shot_w,shot_h)
+                pygame.mixer.Sound.play(shoot_sound)
     #Move left or right
-    if keys[pygame.K_LEFT] and player.x > 0:
+    if keys[pygame.K_LEFT]:
         player.x -= 5
         going_right = False
         move_timer -= 1
-    if keys[pygame.K_RIGHT] and player.x < screenwidth - (player.width*2):
+    if event.type == pygame.JOYAXISMOTION:
+            if joystick.get_axis(1) >= 0.5:
+                player.x -= 5
+                going_right = False
+                move_timer -= 1
+            if joystick.get_axis(1) <= -0.5:
+                player.x += 5
+                going_right = True
+                move_timer -= 1
+    if keys[pygame.K_RIGHT] and player.x:
         player.x += 5
         going_right = True
         move_timer -= 1
-
-
-
+    if keys[pygame.K_l]:
+        shots_amt = 1
+    if keys[pygame.K_p]:
+        score += 5
+    if event.type == pygame.ACTIVEEVENT:
+            if event.gain == 0 and event.state == 6:
+                pygame.display.iconify()
     #---ROW ONE---#
 
     #---Move Doves---#
@@ -279,7 +379,7 @@ while run:
     elif first6_alive:
         left = first6.x
     elif second6_alive:
-        left = second6.x6
+        left = second6.x
     elif third6_alive:
         left = third6.x
     elif fourth6_alive:
@@ -420,40 +520,67 @@ while run:
             window.blit(dove_left_up, (first6.x,first6.y))
         elif first6_alive:
             window.blit(dove_left_down, (first6.x,first6.y))
-    if shot_rect.y <= 0:
+    if shot_rect.y <= 0 and shot:
         shot = False
+        shots_amt -= 1
+        if light:
+            light = False
 
+    if not light:
+        broken_light = True
+    if broken_light:
+        light_timer -= 1
+    if light_timer == 20:
+        light=True
+    if light_timer == 18:
+        light = False
+    if light_timer == 16:
+        light = True
+    if light_timer == 14:
+        light = False
+    if light_timer == 12:
+        light = True
+    if light_timer == 10:
+        light_timer = 25
+        broken_light = False
     #Detect if a dove is shot
-    if shot_rect.x >= first1.x and shot_rect.x <= first1.x+dove_w and shot_rect.y <=first1.y+dove_w and first1_alive and shot:
-        shot=False
+    if shot_rect.x >= first1.x and shot_rect.x <= first1.x+dove_w and shot_rect.y <=first1.y+dove_w and shot_rect.y >= first1.y and first1_alive and shot:
+        dove_hit = True
+        special_bar += 1
         first1_alive = False
         score += 5
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
 
-    if shot_rect.x >= first2.x and shot_rect.x <= first2.x+dove_w and shot_rect.y <=first2.y+dove_w and first2_alive and shot:
-        shot=False
+    if shot_rect.x >= first2.x and shot_rect.x <= first2.x+dove_w and shot_rect.y <=first2.y+dove_w and shot_rect.y >= first2.y and first2_alive and shot:
+        dove_hit = True
+        special_bar += 1
         first2_alive = False
         score += 5
-
-    if shot_rect.x >= first3.x and shot_rect.x <= first3.x+dove_w and shot_rect.y <=first3.y+dove_w and first3_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= first3.x and shot_rect.x <= first3.x+dove_w and shot_rect.y <=first3.y+dove_w and shot_rect.y >= first3.y and first3_alive and shot:
+        dove_hit = True
+        special_bar += 1
         first3_alive = False
         score += 5
-
-    if shot_rect.x >= first4.x and shot_rect.x <= first4.x+dove_w and shot_rect.y <=first4.y+dove_w and first4_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= first4.x and shot_rect.x <= first4.x+dove_w and shot_rect.y <=first4.y+dove_w and shot_rect.y >= first4.y and first4_alive and shot:
+        dove_hit = True
+        special_bar += 1
         first4_alive = False
         score += 5
-
-    if shot_rect.x >= first5.x and shot_rect.x <= first5.x+dove_w and shot_rect.y <=first5.y+dove_w and first5_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= first5.x and shot_rect.x <= first5.x+dove_w and shot_rect.y <=first5.y+dove_w and shot_rect.y >= first5.y and first5_alive and shot:
+        dove_hit = True
+        special_bar += 1
         first5_alive = False
         score += 5
-
-    if shot_rect.x >= first6.x and shot_rect.x <= first6.x+dove_w and shot_rect.y <=first6.y+dove_w and first6_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= first6.x and shot_rect.x <= first6.x+dove_w and shot_rect.y <=first6.y+dove_w and shot_rect.y >= first6.y and first6_alive and shot:
+        dove_hit = True
+        special_bar += 1
         first6_alive = False
         score += 5
-
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
 
     #---ROW TWO---#
 
@@ -521,34 +648,45 @@ while run:
 
 
 
-    if shot_rect.y <= 0:
-      shot = False
+
 
     #Detect if a dove is shot
-    if shot_rect.x >= second1.x and shot_rect.x <= second1.x+dove_w and shot_rect.y <=second1.y+dove_w and second1_alive and shot:
-        shot=False
+    if shot_rect.x >= second1.x and shot_rect.x <= second1.x+dove_w and shot_rect.y <=second1.y+dove_w and shot_rect.y >= second1.y and second1_alive and shot:
+        dove_hit = True
+        special_bar += 1
         second1_alive = False
         score += 5
-    if shot_rect.x >= second2.x and shot_rect.x <= second2.x+dove_w and shot_rect.y <=second2.y+dove_w and second2_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= second2.x and shot_rect.x <= second2.x+dove_w and shot_rect.y <=second2.y+dove_w and shot_rect.y >= second2.y and second2_alive and shot:
+        dove_hit = True
+        special_bar += 1
         second2_alive = False
         score += 5
-    if shot_rect.x >= second3.x and shot_rect.x <= second3.x+dove_w and shot_rect.y <=second3.y+dove_w and second3_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= second3.x and shot_rect.x <= second3.x+dove_w and shot_rect.y <=second3.y+dove_w and shot_rect.y >= second3.y and second3_alive and shot:
+        dove_hit = True
+        special_bar += 1
         second3_alive = False
         score += 5
-    if shot_rect.x >= second4.x and shot_rect.x <= second4.x+dove_w and shot_rect.y <=second4.y+dove_w and second4_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= second4.x and shot_rect.x <= second4.x+dove_w and shot_rect.y <=second4.y+dove_w and shot_rect.y >= second4.y and second4_alive and shot:
+        dove_hit = True
+        special_bar += 1
         second4_alive = False
         score += 5
-    if shot_rect.x >= second5.x and shot_rect.x <= second5.x+dove_w and shot_rect.y <=second5.y+dove_w and second5_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= second5.x and shot_rect.x <= second5.x+dove_w and shot_rect.y <=second5.y+dove_w and shot_rect.y >= second5.y and second5_alive and shot:
+        dove_hit = True
+        special_bar += 1
         second5_alive = False
         score += 5
-    if shot_rect.x >= second6.x and shot_rect.x <= second6.x+dove_w and shot_rect.y <=second6.y+dove_w and second6_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= second6.x and shot_rect.x <= second6.x+dove_w and shot_rect.y <=second6.y+dove_w and shot_rect.y >= second6.y and second6_alive and shot:
+        dove_hit = True
+        special_bar += 1
         second6_alive = False
         score += 5
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
     #---ROW THREE---#
 
     if speed > 0:
@@ -613,33 +751,42 @@ while run:
             window.blit(dove_left_down, (third6.x,third6.y))
 
     #Detect if a dove is shot
-    if shot_rect.x >= third1.x and shot_rect.x <= third1.x+dove_w and shot_rect.y <=third1.y+dove_w and third1_alive and shot:
-        shot=False
+    if shot_rect.x >= third1.x and shot_rect.x <= third1.x+dove_w and shot_rect.y <=third1.y+dove_w and shot_rect.y >= third1.y and third1_alive and shot:
+        dove_hit = True
+        special_bar += 1
         third1_alive = False
         score += 5
-    if shot_rect.x >= third2.x and shot_rect.x <= third2.x+dove_w and shot_rect.y <=third2.y+dove_w and third2_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= third2.x and shot_rect.x <= third2.x+dove_w and shot_rect.y <=third2.y+dove_w and shot_rect.y >= third2.y and third2_alive and shot:
+        dove_hit = True
+        special_bar += 1
         third2_alive = False
         score += 5
-    if shot_rect.x >= third3.x and shot_rect.x <= third3.x+dove_w and shot_rect.y <=third3.y+dove_w and third3_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= third3.x and shot_rect.x <= third3.x+dove_w and shot_rect.y <=third3.y+dove_w and shot_rect.y >= third3.y and third3_alive and shot:
+        dove_hit = True
+        special_bar += 1
         third3_alive = False
         score += 5
-    if shot_rect.x >= third4.x and shot_rect.x <= third4.x+dove_w and shot_rect.y <=third4.y+dove_w and third4_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= third4.x and shot_rect.x <= third4.x+dove_w and shot_rect.y <=third4.y+dove_w and shot_rect.y >= third4.y and third4_alive and shot:
+        dove_hit = True
+        special_bar += 1
         third4_alive = False
         score += 5
-    if shot_rect.x >= third5.x and shot_rect.x <= third5.x+dove_w and shot_rect.y <=third5.y+dove_w and third5_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= third5.x and shot_rect.x <= third5.x+dove_w and shot_rect.y <=third5.y+dove_w and shot_rect.y >= third5.y and third5_alive and shot:
+        dove_hit = True
+        special_bar += 1
         third5_alive = False
         score += 5
-    if shot_rect.x >= third6.x and shot_rect.x <= third6.x+dove_w and shot_rect.y <=third6.y+dove_w and third6_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= third6.x and shot_rect.x <= third6.x+dove_w and shot_rect.y <=third6.y+dove_w and shot_rect.y >= third6.y and third6_alive and shot:
+        dove_hit = True
+        special_bar += 1
         third6_alive = False
         score += 5
-
-
-
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
     #---ROW FOUR---#
     if speed > 0:
         if fourth1_alive and flap_up:
@@ -703,30 +850,46 @@ while run:
             window.blit(dove_left_down, (fourth6.x,fourth6.y))
 
     #Detect if a dove is shot
-    if shot_rect.x >= fourth1.x and shot_rect.x <= fourth1.x+dove_w and shot_rect.y <=fourth1.y+dove_w and fourth1_alive and shot:
-        shot=False
+    if shot_rect.x >= fourth1.x and shot_rect.x <= fourth1.x+dove_w and shot_rect.y <=fourth1.y+dove_w and shot_rect.y >= fourth1.y and fourth1_alive and shot:
+        dove_hit = True
+        special_bar += 1
         fourth1_alive = False
         score += 5
-    if shot_rect.x >= fourth2.x and shot_rect.x <= fourth2.x+dove_w and shot_rect.y <=fourth2.y+dove_w and fourth2_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= fourth2.x and shot_rect.x <= fourth2.x+dove_w and shot_rect.y <=fourth2.y+dove_w and shot_rect.y >= fourth2.y and fourth2_alive and shot:
+        dove_hit = True
+        special_bar += 1
         fourth2_alive = False
         score += 5
-    if shot_rect.x >= fourth3.x and shot_rect.x <= fourth3.x+dove_w and shot_rect.y <=fourth3.y+dove_w and fourth3_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= fourth3.x and shot_rect.x <= fourth3.x+dove_w and shot_rect.y <=fourth3.y+dove_w and shot_rect.y >= fourth3.y and fourth3_alive and shot:
+        dove_hit = True
+        special_bar += 1
         fourth3_alive = False
         score += 5
-    if shot_rect.x >= fourth4.x and shot_rect.x <= fourth4.x+dove_w and shot_rect.y <=fourth4.y+dove_w and fourth4_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= fourth4.x and shot_rect.x <= fourth4.x+dove_w and shot_rect.y <=fourth4.y+dove_w and shot_rect.y >= fourth4.y and fourth4_alive and shot:
+        dove_hit = True
+        special_bar += 1
         fourth4_alive = False
         score += 5
-    if shot_rect.x >= fourth5.x and shot_rect.x <= fourth5.x+dove_w and shot_rect.y <=fourth5.y+dove_w and fourth5_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= fourth5.x and shot_rect.x <= fourth5.x+dove_w and shot_rect.y <=fourth5.y+dove_w and shot_rect.y >= fourth5.y and fourth5_alive and shot:
+        dove_hit = True
+        special_bar += 1
         fourth5_alive = False
         score += 5
-    if shot_rect.x >= fourth6.x and shot_rect.x <= fourth6.x+dove_w and shot_rect.y <=fourth6.y+dove_w and fourth6_alive and shot:
-        shot=False
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+    if shot_rect.x >= fourth6.x and shot_rect.x <= fourth6.x+dove_w and shot_rect.y <=fourth6.y+dove_w and shot_rect.y >= fourth6.y and fourth6_alive and shot:
+        dove_hit = True
+        special_bar += 1
         fourth6_alive = False
         score += 5
+        shots_amt = min(shots_amt + 1, MAX_SHOTS)
+
+    if dove_hit:
+        shot = False
+
 
 
 
@@ -738,29 +901,34 @@ while run:
         if shot_timer >= 10:
             window.blit(shot1,(shot_rect.x,shot_rect.y))
     elif not shot:
+        if dove_hit:
+            if green_flame:
+                shot_rect.y += 50
         shot_rect = pygame.Rect(-100,-100,15,25)
         shot_timer = 0
-    if move_timer == 0:
-        jim_move = not jim_move
-        move_timer = 25
-    if poop_rect.y <= player.y:
+
+
+    if pooping:
         poop_rect.y += 10
         window.blit(poop,(poop_rect.x,poop_rect.y))
-    if poop_rect.x >= player.x and poop_rect.x <= player.x + jim_w and poop_rect.y >= player.y + 10:
+    if poop_rect.x >= player.x and poop_rect.x <= player.x + jim_w and poop_rect.y >= player.y - 10:
+        hit = True
+        poop_rect.y -= 10
+
+    if poop_rect.y > player.y + 10:
+        poop_rect.y = 0
+        poop_rect.x = 0
+
+    if hit and not is_pooped:
         pygame.mixer.Sound.play(get_hit)
+        poop = pygame.image.load('images/poop2.png')
+        window.blit(poop,(poop_rect.x,poop_rect.y))
+        poop_lvl += 1
+        hit = False
+        is_pooped = True
+        special_bar -= 1
 
 
-
-    if jim_move and going_right:
-        jim = pygame.image.load('images/jim_right_2.png')
-    elif not jim_move and going_right:
-        jim = pygame.image.load('images/jim_right_1.png')
-
-
-    elif jim_move:
-        jim = pygame.image.load('images/jim_left_2.png')
-    elif not jim_move:
-        jim = pygame.image.load('images/jim_left_1.png')
     if score > 0:
         pygame.mixer.Sound.play(score_sound)
     digit3 += score
@@ -772,9 +940,106 @@ while run:
         digit1 += 1
     score = 0
     scoretext = font.render('SCORE: ' + str(digit1) + str(digit2) + str(digit3) , False, (255,255,255))
-    window.blit(jim, (player.x,player.y))
-    window.blit(curtains,(0,0))
-    window.blit(scoretext,(0,0))
+    window.blit(left_portal1, (-2,605))
+    window.blit(right_portal1, (screenwidth- 67,607))
+    if poop_lvl == 0:
+        if flap_up:
+            jim = pygame.image.load('images/jim_left_2.png')
+        if not flap_up:
+            jim = pygame.image.load('images/jim_left_1.png')
+    if poop_lvl == 1:
+        if flap_up:
+            jim = pygame.image.load('images/jim_poop_down_left_1.png')
+        if not flap_up:
+            jim = pygame.image.load('images/jim_poop_up_left_1.png')
+    if poop_lvl == 2:
+        if flap_up:
+            jim = pygame.image.load('images/jim_poop_down_left_2.png')
+        if not flap_up:
+            jim = pygame.image.load('images/jim_poop_up_left_2.png')
+    if poop_lvl == 3:
+        if flap_up:
+            jim = pygame.image.load('images/jim_poop_down_left_3.png')
+        if not flap_up:
+            jim = pygame.image.load('images/jim_poop_up_left_3.png')
+    if poop_lvl == 4:
+        locked -= 1
+        poop_lvl = 0
 
+
+
+
+
+    if going_right:
+        jim = pygame.transform.flip(jim,True,False)
+
+    if player.x <= 50:
+        window.blit(jim, (player.x + screenwidth-100, player.y))
+    elif player.x >= 900:
+        window.blit(jim, (player.x - 900, player.y))
+    if player.x < 0:
+        player.x = 900
+    elif player.x > 900:
+        player.x = 10
+    window.blit(jim, (player.x,player.y))
+
+    window.blit(left_portal2, (-2,605))
+    window.blit(right_portal2, (screenwidth - 51, 607))
+    if light:
+        window.blit(spotlight, (player.x - 44, 28))
+    window.blit(curtains,(0,0))
+    window.blit(scoretext,(10,10))
+    if special_bar == 1:
+        magic_bar = pygame.image.load('images/jimbar1.png')
+    if special_bar == 2:
+        magic_bar = pygame.image.load('images/jimbar2.png')
+    if special_bar == 3:
+        magic_bar = pygame.image.load('images/jimbar3.png')
+    if special_bar == 4:
+        magic_bar = pygame.image.load('images/jimbar4.png')
+    if special_bar == 5:
+        magic_bar = pygame.image.load('images/jimbar5.png')
+    if special_bar == 6:
+        magic_bar = pygame.image.load('images/jimbar6.png')
+    if special_bar == 7:
+        magic_bar = pygame.image.load('images/jimbar7.png')
+    if special_bar == 8:
+        magic_bar = pygame.image.load('images/jimbar8.png')
+    if special_bar == 9:
+        magic_bar = pygame.image.load('images/jimbar9.png')
+    if special_bar == 10:
+        magic_bar = pygame.image.load('images/jimbar10.png')
+        ding = pygame.mixer.Sound('Ding.wav')
+        pygame.mixer.Sound.play(ding)
+    window.blit(magic_bar,(560,10))
+    if special_bar == 11:
+        special_bar = 1
+
+    if shots_amt == 0:
+        locked -= 1
+        shots_amt = int(MAX_SHOTS/2)
+    MAX_SHOTS = locked
+    if not use_ability:
+        gem_image = pygame.image.load('images/gempurple.png')
+    if green_flame:
+        gem_image = pygame.image.load('images/greengem.png')
+    for gem in range(20):
+        if gem >= locked:
+            window.blit(locked_gem,(gem_start,57))
+        if gem == shots_amt-1 and shot:
+            gem_y = 40
+        if gem < locked and gem < shots_amt:
+            which_gem = random.randint(0,100)
+            window.blit(gem_image,(gem_start,gem_y))
+            gem_y = 57
+
+        gem_start += gem_width
+    gem_start = 760
+    gem_y = 57
+    dove_hit = False
+    total_score = int(str(digit1) + str(digit2) + str(digit3))
     pygame.display.flip()
+    print(total_score)
+
+
     c.tick(60)
